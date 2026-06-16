@@ -15,22 +15,16 @@ https://github.com/user-attachments/assets/1e440ace-8560-4e12-850e-c532740711e7
 Here are sample videos generated end-to-end directly by this project using the React/Remotion composition engine:
 
 <div align="center">
-  <video src="https://github.com/jaiprasad04/Text-To-Video-AI/raw/main/assets/wonders_of_space.mp4" width="100%" controls></video>
+  <video src="https://github.com/user-attachments/assets/752c1d80-e011-4d2e-bc23-0dea2a091244" width="100%" controls></video>
 </div>
 
 > **"Wonders of Outer Space"** — An educational video about the cosmos, galaxies, and black holes. Generated using local EdgeTTS voiceover, whisper-timestamped local word captions, Suno AI background music, and Veo3 AI B-roll video segments.
 
 <div align="center">
-  <video src="https://github.com/jaiprasad04/Text-To-Video-AI/raw/main/assets/deep_ocean_exploration.mp4" width="100%" controls></video>
+  <video src="https://github.com/user-attachments/assets/9718fba7-f9a4-45a6-bc7c-c7e5fa21c8cf" width="100%" controls></video>
 </div>
 
 > **"Exploring the Deep Ocean"** — A cinematic short exploring deep sea depths, bioluminescent creatures, and thermal vents. Generated using local EdgeTTS voiceover, whisper-timestamped local word captions, Suno AI background music, and Veo3 AI B-roll video segments.
-
-<div align="center">
-  <video src="https://github.com/jaiprasad04/Text-To-Video-AI/raw/main/assets/cosmic_lighthouse.mp4" width="100%" controls></video>
-</div>
-
-> **"The Cosmic Lighthouse"** — An educational short explaining the astonishing secrets of pulsars. Generated using local EdgeTTS voiceover, whisper-timestamped word captions, Suno AI background music, 14 xAI Grok Imagine-generated B-roll clips, and Remotion composition.
 
 
 ## Features
