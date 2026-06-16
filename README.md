@@ -14,21 +14,15 @@ https://github.com/user-attachments/assets/1e440ace-8560-4e12-850e-c532740711e7
 
 Here are sample videos generated end-to-end directly by this project using the React/Remotion composition engine:
 
-<div align="center">
-  <video src="assets/wonders_of_space.mp4" width="100%" controls></video>
-</div>
+![Wonders of Outer Space](assets/wonders_of_space.mp4)
 
 > **"Wonders of Outer Space"** — An educational video about the cosmos, galaxies, and black holes. Generated using local EdgeTTS voiceover, whisper-timestamped local word captions, Suno AI background music, and Veo3 AI B-roll video segments.
 
-<div align="center">
-  <video src="assets/deep_ocean_exploration.mp4" width="100%" controls></video>
-</div>
+![Exploring the Deep Ocean](assets/deep_ocean_exploration.mp4)
 
 > **"Exploring the Deep Ocean"** — A cinematic short exploring deep sea depths, bioluminescent creatures, and thermal vents. Generated using local EdgeTTS voiceover, whisper-timestamped local word captions, Suno AI background music, and Veo3 AI B-roll video segments.
 
-<div align="center">
-  <video src="assets/cosmic_lighthouse.mp4" width="100%" controls></video>
-</div>
+![The Cosmic Lighthouse](assets/cosmic_lighthouse.mp4)
 
 > **"The Cosmic Lighthouse"** — An educational short explaining the astonishing secrets of pulsars. Generated using local EdgeTTS voiceover, whisper-timestamped word captions, Suno AI background music, 14 xAI Grok Imagine-generated B-roll clips, and Remotion composition.
 
