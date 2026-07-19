@@ -4,6 +4,7 @@ import tempfile
 import zipfile
 import platform
 import subprocess
+import math
 from moviepy.editor import (AudioFileClip, CompositeVideoClip, CompositeAudioClip, ImageClip,
 TextClip, VideoFileClip)
 from moviepy.audio.fx.audio_loop import audio_loop
@@ -83,7 +84,31 @@ def get_output_media(audio_file_path, timed_captions, background_video_data, vid
             new_clips = get_caption_clips(text, t1, t2, config)
             visual_clips.extend(new_clips)
 
-    video = CompositeVideoClip(visual_clips)
+    # Add moving watermark if enabled
+    if config.get_watermark_enabled():
+        watermark_text = config.get_watermark_text()
+        wm_color = config.get_watermark_color()
+        wm_opacity = config.get_watermark_opacity()
+        wm_font_size = int(config.get_caption_font_size() * 0.25)
+        
+        if watermark_text:
+            wm_clip = TextClip(txt=watermark_text, font='Arial-Bold', fontsize=wm_font_size, color=wm_color, method='label')
+            
+            # Calculate total duration from audio
+            total_duration = audio_file_clip.duration
+            wm_clip = wm_clip.set_duration(total_duration).set_opacity(wm_opacity)
+            
+            # Gentle floating motion using sine and cosine
+            def floating_position(t):
+                x = int(60 + 30 * math.sin(t * 0.4))
+                y = int(60 + 20 * math.cos(t * 0.3))
+                return (x, y)
+                
+            wm_clip = wm_clip.set_position(floating_position)
+            visual_clips.append(wm_clip)
+            print("[RenderEngine] Added moving watermark.")
+
+    video = CompositeVideoClip(visual_clip for visual_clip in visual_clips)
     if audio_clips:
         audio = CompositeAudioClip(audio_clips)
         video.duration = audio.duration
