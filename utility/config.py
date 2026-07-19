@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from typing import Optional, Literal
+from typing import Optional, Literal, List
 from openai import OpenAI
 
 try:
@@ -22,25 +22,22 @@ class ConfigurationError(Exception):
 
 class Config:
     _instance: Optional['Config'] = None
-    
+
     def __new__(cls) -> 'Config':
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance._initialized = False
         return cls._instance
-    
+
     def __init__(self):
         if self._initialized:
             return
-        
         load_dotenv()
-        
         self._validate_env_file()
         self._validate_configuration()
-        
         self._llm_client = None
         self._initialized = True
-    
+
     def _validate_env_file(self) -> None:
         env_path = os.path.join(os.getcwd(), '.env')
         if not os.path.exists(env_path):
@@ -48,107 +45,162 @@ class Config:
                 ".env file not found. Please create a .env file based on .env.example\n"
                 f"Expected location: {env_path}"
             )
-    
+
     def _validate_configuration(self) -> None:
         errors = []
-        
-        llm_provider = os.getenv('LLM_PROVIDER', '').lower()
-        if llm_provider not in ['openai', 'groq', 'gemini']:
+        llm_provider = os.getenv('LLM_PROVIDER', 'auto').lower()
+
+        if llm_provider not in ['auto', 'openrouter', 'openai', 'groq', 'gemini']:
             errors.append(
-                f"Invalid LLM_PROVIDER: '{llm_provider}'. Must be one of: openai, groq, gemini"
+                f"Invalid LLM_PROVIDER: '{llm_provider}'. Must be one of: auto, openrouter, openai, groq, gemini"
             )
-        
-        if llm_provider == 'openai':
-            if not os.getenv('OPENAI_API_KEY'):
-                errors.append("Missing required API key: OPENAI_API_KEY (required for LLM_PROVIDER=openai)")
-            if not os.getenv('OPENAI_MODEL'):
-                errors.append("Missing required configuration: OPENAI_MODEL (required for LLM_PROVIDER=openai)")
-        
-        elif llm_provider == 'groq':
-            if not os.getenv('GROQ_API_KEY'):
-                errors.append("Missing required API key: GROQ_API_KEY (required for LLM_PROVIDER=groq)")
-            if not os.getenv('GROQ_MODEL'):
-                errors.append("Missing required configuration: GROQ_MODEL (required for LLM_PROVIDER=groq)")
-        
-        elif llm_provider == 'gemini':
-            if not os.getenv('GEMINI_API_KEY'):
-                errors.append("Missing required API key: GEMINI_API_KEY (required for LLM_PROVIDER=gemini)")
-            if not os.getenv('GEMINI_MODEL'):
-                errors.append("Missing required configuration: GEMINI_MODEL (required for LLM_PROVIDER=gemini)")
-        
+
+        has_any_key = bool(
+            os.getenv('OPENROUTER_API_KEY') or
+            os.getenv('OPENAI_API_KEY') or
+            os.getenv('GROQ_API_KEY') or
+            os.getenv('GEMINI_API_KEY')
+        )
+        if not has_any_key:
+            errors.append(
+                "At least one LLM API key (OPENROUTER, OPENAI, GROQ, or GEMINI) must be provided."
+            )
+
         if not os.getenv('PEXELS_API_KEY') and not os.getenv('MUAPI_API_KEY'):
-            errors.append("Missing required API key: PEXELS_API_KEY or MUAPI_API_KEY must be provided")
-        
-        stt_provider = os.getenv('STT_PROVIDER', '').lower()
+            errors.append(
+                "Missing required API key: PEXELS_API_KEY or MUAPI_API_KEY must be provided"
+            )
+
+        stt_provider = os.getenv('STT_PROVIDER', 'whisper').lower()
         if stt_provider not in ['whisper', 'deepgram']:
             errors.append(
                 f"Invalid STT_PROVIDER: '{stt_provider}'. Must be one of: whisper, deepgram"
             )
         elif stt_provider == 'deepgram':
             if not os.getenv('DEEPGRAM_API_KEY'):
-                errors.append("Missing required API key: DEEPGRAM_API_KEY (required for STT_PROVIDER=deepgram)")
-        
-        tts_provider = os.getenv('TTS_PROVIDER', '').lower()
+                errors.append(
+                    "Missing required API key: DEEPGRAM_API_KEY (required for STT_PROVIDER=deepgram)"
+                )
+
+        tts_provider = os.getenv('TTS_PROVIDER', 'edgetts').lower()
         if tts_provider not in ['edgetts', 'elevenlabs']:
             errors.append(
                 f"Invalid TTS_PROVIDER: '{tts_provider}'. Must be one of: edgetts, elevenlabs"
             )
         elif tts_provider == 'edgetts':
             if not os.getenv('EDGETTS_VOICE'):
-                errors.append("Missing required configuration: EDGETTS_VOICE (required for TTS_PROVIDER=edgetts)")
+                errors.append(
+                    "Missing required configuration: EDGETTS_VOICE (required for TTS_PROVIDER=edgetts)"
+                )
         elif tts_provider == 'elevenlabs':
             if not os.getenv('ELEVENLABS_API_KEY'):
-                errors.append("Missing required API key: ELEVENLABS_API_KEY (required for TTS_PROVIDER=elevenlabs)")
+                errors.append(
+                    "Missing required API key: ELEVENLABS_API_KEY (required for TTS_PROVIDER=elevenlabs)"
+                )
             if not os.getenv('ELEVENLABS_VOICE_ID'):
-                errors.append("Missing required configuration: ELEVENLABS_VOICE_ID (required for TTS_PROVIDER=elevenlabs)")
-        
+                errors.append(
+                    "Missing required configuration: ELEVENLABS_VOICE_ID (required for TTS_PROVIDER=elevenlabs)"
+                )
+
         if errors:
             error_message = "Configuration validation failed:\n\n"
             for error in errors:
                 error_message += f"  - {error}\n"
             error_message += "\nPlease check your .env file and ensure all required keys are set."
             raise ConfigurationError(error_message)
-    
-    def get_llm_provider(self) -> Literal['openai', 'groq', 'gemini']:
-        return os.getenv('LLM_PROVIDER', '').lower()
-    
-    def get_llm_model(self) -> str:
-        provider = self.get_llm_provider()
-        if provider == 'openai':
-            return os.getenv('OPENAI_MODEL', 'gpt-4o')
+
+    def get_llm_provider(self) -> str:
+        return os.getenv('LLM_PROVIDER', 'auto').lower()
+
+    def get_llm_models(self, provider: str = None) -> List[str]:
+        """Return list of models for each provider in priority order for fallback"""
+        if provider is None:
+            provider = self.get_llm_provider()
+            if provider == 'auto':
+                provider = 'openrouter'
+
+        if provider == 'openrouter':
+            return [
+                os.getenv('OPENROUTER_MODEL', 'openai/gpt-4o'),
+                'meta-llama/llama-3.3-70b-instruct',
+                'mistralai/mistral-large',
+                'qwen/qwen-2.5-72b-instruct',
+                'deepseek/deepseek-chat',
+                'openai/gpt-4o-mini'
+            ]
+        elif provider == 'openai':
+            return [
+                os.getenv('OPENAI_MODEL', 'gpt-4o'),
+                'gpt-4o-mini',
+                'gpt-4-turbo',
+                'o1-mini',
+                'gpt-3.5-turbo'
+            ]
         elif provider == 'groq':
-            return os.getenv('GROQ_MODEL', 'llama3-70b-8192')
+            return [
+                os.getenv('GROQ_MODEL', 'llama-3.3-70b-versatile'),
+                'llama-3.1-70b-versatile',
+                'mixtral-8x7b-32768',
+                'gemma2-9b-it',
+                'llama-3.1-8b-instant'
+            ]
         elif provider == 'gemini':
-            return os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')
+            return [
+                os.getenv('GEMINI_MODEL', 'gemini-1.5-flash'),
+                'gemini-1.5-pro',
+                'gemini-1.5-flash-8b',
+                'gemini-2.0-flash-exp'
+            ]
         raise ConfigurationError(f"Unknown LLM provider: {provider}")
-    
-    def get_llm_client(self):
-        if self._llm_client is not None:
-            return self._llm_client
-        
-        provider = self.get_llm_provider()
-        
-        if provider == 'openai':
-            self._llm_client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+
+    def get_llm_model(self, provider: str = None) -> str:
+        """Return the primary model for a provider"""
+        if provider is None:
+            provider = self.get_llm_provider()
+            if provider == 'auto':
+                provider = 'openrouter'
+        models = self.get_llm_models(provider)
+        return models[0] if models else 'gpt-4o'
+
+    def get_llm_client(self, provider: str = None):
+        """Return the LLM client for the given provider"""
+        if provider is None:
+            provider = self.get_llm_provider()
+            if provider == 'auto':
+                provider = 'openrouter'
+
+        if provider == 'openrouter':
+            api_key = os.getenv('OPENROUTER_API_KEY')
+            if not api_key:
+                raise ConfigurationError("Missing required API key: OPENROUTER_API_KEY")
+            return OpenAI(
+                api_key=api_key,
+                base_url="https://openrouter.ai/api/v1",
+                default_headers={
+                    "HTTP-Referer": "https://github.com/SamurAIGPT/Text-To-Video-AI",
+                    "X-Title": "Text-To-Video-AI"
+                }
+            )
+        elif provider == 'openai':
+            return OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
         elif provider == 'groq':
             if not GROQ_AVAILABLE:
                 raise ConfigurationError("Groq library not installed. Run: pip install groq")
-            self._llm_client = Groq(api_key=os.getenv('GROQ_API_KEY'))
+            return Groq(api_key=os.getenv('GROQ_API_KEY'))
         elif provider == 'gemini':
             if not GEMINI_AVAILABLE:
                 raise ConfigurationError("Gemini library not installed. Run: pip install google-generativeai")
             genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
-            model_name = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')
-            self._llm_client = genai.GenerativeModel(model_name)
-        
-        return self._llm_client
-    
+            return genai
+
+        raise ConfigurationError(f"Unknown LLM provider: {provider}")
+
     def get_stt_provider(self) -> Literal['whisper', 'deepgram']:
         return os.getenv('STT_PROVIDER', 'whisper').lower()
-    
+
     def get_tts_provider(self) -> Literal['edgetts', 'elevenlabs']:
         return os.getenv('TTS_PROVIDER', 'edgetts').lower()
-    
+
     def get_tts_voice(self) -> str:
         provider = self.get_tts_provider()
         if provider == 'edgetts':
@@ -156,19 +208,14 @@ class Config:
         elif provider == 'elevenlabs':
             return os.getenv('ELEVENLABS_VOICE_ID', '21m00Tcm4TlvDq8ikWAM')
         raise ConfigurationError(f"Unknown TTS provider: {provider}")
-    
+
     def get_pexels_api_key(self) -> str:
         key = os.getenv('PEXELS_API_KEY')
         if not key:
             raise ConfigurationError("PEXELS_API_KEY not found in .env file")
         return key
-    
+
     def get_video_orientation(self) -> bool:
-        """
-        Returns True for landscape (horizontal) or False for portrait (vertical)
-        Portrait (vertical, 1080x1920) is recommended for mobile platforms
-        Landscape (horizontal, 1920x1080) is for traditional video
-        """
         orientation = os.getenv('VIDEO_ORIENTATION', 'portrait').lower()
         if orientation not in ['portrait', 'landscape']:
             raise ConfigurationError(
@@ -181,35 +228,29 @@ class Config:
         if not key:
             raise ConfigurationError("DEEPGRAM_API_KEY not found in .env file")
         return key
-    
+
     def get_elevenlabs_api_key(self) -> str:
         key = os.getenv('ELEVENLABS_API_KEY')
         if not key:
             raise ConfigurationError("ELEVENLABS_API_KEY not found in .env file")
         return key
-    
+
     def get_captions_enabled(self) -> bool:
-        """Get whether captions are enabled"""
         return os.getenv('CAPTIONS_ENABLED', 'true').lower() == 'true'
 
     def get_caption_font_size(self) -> int:
-        """Get caption font size from config"""
         return int(os.getenv('CAPTION_FONT_SIZE', '100'))
-    
+
     def get_caption_font_color(self) -> str:
-        """Get caption font color from config"""
         return os.getenv('CAPTION_FONT_COLOR', 'white').lower()
-    
+
     def get_caption_stroke_width(self) -> int:
-        """Get caption stroke/outline width from config"""
         return int(os.getenv('CAPTION_STROKE_WIDTH', '3'))
-    
+
     def get_caption_stroke_color(self) -> str:
-        """Get caption stroke/outline color from config"""
         return os.getenv('CAPTION_STROKE_COLOR', 'black').lower()
-    
+
     def get_caption_position(self) -> str:
-        """Get caption position from config (center, top, bottom, bottom_center, bottom_left, bottom_right)"""
         position = os.getenv('CAPTION_POSITION', 'bottom_center').lower()
         valid_positions = ['center', 'top', 'bottom', 'bottom_center', 'bottom_left', 'bottom_right']
         if position not in valid_positions:
@@ -217,11 +258,9 @@ class Config:
                 f"Invalid CAPTION_POSITION: '{position}'. Must be one of: {', '.join(valid_positions)}"
             )
         return position
-    
-    def get_caption_font_face(self) -> str:
-        """Get caption font face from config (e.g., Arial, Helvetica, Impact, Courier-New)"""
-        return os.getenv('CAPTION_FONT_FACE', 'Arial-Bold')
 
+    def get_caption_font_face(self) -> str:
+        return os.getenv('CAPTION_FONT_FACE', 'Arial-Bold')
 
 
 def get_config() -> Config:
