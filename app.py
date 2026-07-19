@@ -94,8 +94,8 @@ if __name__ == "__main__":
                 download_file(music_url, music_path)
                 print(f"Muapi Suno music generated and saved to: {music_path}")
             except Exception as e:
-                print(f"⚠️ Error generating music via Muapi: {e}. Falling back to Local MusicGen.")
-                use_muapi = False # Force fallback
+                print(f"Error generating music via Muapi: {e}. Falling back to Local MusicGen.")
+                use_muapi = False
                 
         if not use_muapi:
             print("Using Local AI (MusicGen) for 2026-standard background music...")
@@ -105,7 +105,7 @@ if __name__ == "__main__":
         manager.update_data("background_music_path", music_path)
         manager.set_stage("4.5_audio_ducking")
 
-    # 4.5. Apply Audio Ducking (Crucial for 2026 standards)
+    # 4.5. Apply Audio Ducking
     if manager.get_stage() == "4.5_audio_ducking":
         print("\n--- STAGE 4.5: Applying Audio Ducking ---")
         voiceover_path = manager.get_data("voiceover_path")
@@ -115,7 +115,7 @@ if __name__ == "__main__":
             from utility.audio.audio_ducker import apply_audio_ducking
             mixed_audio_path = "mixed_final_audio.wav"
             apply_audio_ducking(voiceover_path, music_path, output_path=mixed_audio_path)
-            manager.update_data("voiceover_path", mixed_audio_path) # Replace voiceover with mixed audio for renderer
+            manager.update_data("voiceover_path", mixed_audio_path)
             print("Audio ducking applied successfully.")
         else:
             print("No background music found. Skipping ducking.")
@@ -137,7 +137,8 @@ if __name__ == "__main__":
             print(f"Generating B-Roll clips using Muapi model '{model_name}'...")
             start_index = len(background_video_urls)
             for i, ((t1, t2), queries) in enumerate(search_terms):
-                if i < start_index: continue
+                if i < start_index:
+                    continue
                 prompt = queries[0] if queries else topic
                 print(f"\nGenerating Clip {i+1}/{len(search_terms)}...")
                 try:
@@ -146,7 +147,7 @@ if __name__ == "__main__":
                     background_video_urls.append([[t1, t2], urls[0]])
                     manager.update_data("background_video_urls", background_video_urls)
                 except Exception as e:
-                    print(f"⚠️ Muapi failed. Falling back to Pexels.")
+                    print(f"Muapi failed. Falling back to Pexels.")
                     fallback_urls = generate_video_url([[[t1, t2], queries]], "pexel", orientation_landscape=orientation_landscape)
                     if fallback_urls and fallback_urls[0][1]:
                         background_video_urls.append(fallback_urls[0])
@@ -161,7 +162,7 @@ if __name__ == "__main__":
     # 6. Render final composite video
     if manager.get_stage() == "6_render":
         print("\n--- STAGE 6: Rendering Final Video ---")
-        voiceover_path = manager.get_data("voiceover_path") # This is now the mixed/ducked audio
+        voiceover_path = manager.get_data("voiceover_path")
         timed_captions = manager.get_data("timed_captions")
         background_video_urls = manager.get_data("background_video_urls")
         
@@ -174,7 +175,7 @@ if __name__ == "__main__":
                 timed_captions=timed_captions,
                 background_video_data=background_video_urls,
                 video_server="pexel",
-                background_music_path=None # Music is already mixed in voiceover_path
+                background_music_path=None
             )
             
             # Auto-rename video file based on topic
@@ -189,9 +190,17 @@ if __name__ == "__main__":
                 
             print(f"\nSUCCESS! Final video saved as '{video_output}'")
             manager.update_data("video_path", video_output)
-            manager.set_stage("completed")
+            manager.set_stage("7_metadata")
         else:
             print("Error: No background video clips found. Cannot render.")
+
+    # 7. Generate Upload Metadata (2026 Standards)
+    if manager.get_stage() == "7_metadata":
+        print("\n--- STAGE 7: Generating Upload Metadata ---")
+        from utility.metadata.metadata_generator import generate_metadata
+        script = manager.get_data("script")
+        generate_metadata(topic, script)
+        manager.set_stage("completed")
 
     if manager.get_stage() == "completed":
         print("\nPipeline execution complete! Resetting checkpoint...")
